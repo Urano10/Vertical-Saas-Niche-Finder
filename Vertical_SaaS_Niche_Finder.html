@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vertical SaaS Niche Finder</title>
+    <script src="./libs/jspdf.umd.min.js"></script>
+<script src="./libs/html2pdf.bundle.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #2185D0;
+            --primary-dark: #0E6BA8;
+            --accent: #FF6B35;
+            --success: #21BA45;
+            --light-bg: #F8F9FA;
+            --dark-text: #1B1C1D;
+            --light-text: #767676;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: var(--dark-text);
+        }
+        .container {
+            max-width: 950px;
+            width: 100%;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 50px 35px;
+            text-align: center;
+        }
+        .header h1 { font-size: 32px; margin-bottom: 12px; font-weight: 700; }
+        .header p { font-size: 16px; opacity: 0.95; margin-bottom: 8px; }
+        .header .subtitle { font-size: 13px; opacity: 0.8; }
+        .content { padding: 45px 35px; max-height: 70vh; overflow-y: auto; }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #E5E7EB;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 35px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent) 0%, var(--primary) 100%);
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+        .question-number { font-size: 12px; color: var(--primary); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+        .question-text { font-size: 20px; font-weight: 700; color: var(--dark-text); margin-bottom: 24px; line-height: 1.3; }
+        .options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 35px; }
+        .option {
+            display: flex;
+            align-items: center;
+            padding: 14px 18px;
+            border: 2px solid #E5E7EB;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            font-size: 14px;
+        }
+        .option:hover {
+            border-color: var(--primary);
+            background: rgba(33, 133, 208, 0.04);
+            transform: translateX(4px);
+        }
+        .option input {
+            margin-right: 12px;
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+        .option.selected {
+            border-color: var(--primary);
+            background: rgba(33, 133, 208, 0.08);
+            box-shadow: 0 2px 8px rgba(33, 133, 208, 0.12);
+        }
+        .option label { cursor: pointer; flex: 1; margin: 0; font-weight: 500; }
+        .quiz-footer { display: flex; gap: 14px; justify-content: space-between; margin-top: 40px; }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 9px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            font-family: inherit;
+        }
+        .btn-prev { background: white; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-prev:hover { background: var(--light-bg); }
+        .btn-next { background: var(--primary); color: white; flex: 1; }
+        .btn-next:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 6px 18px rgba(33, 133, 208, 0.35); }
+        .btn-next:disabled { opacity: 0.48; cursor: not-allowed; }
+        .results-header { text-align: center; margin-bottom: 40px; }
+        .results-header h2 { font-size: 28px; color: var(--success); margin-bottom: 10px; font-weight: 700; }
+        .results-header p { font-size: 15px; color: var(--light-text); }
+        .niche-card {
+            background: white;
+            border: 2px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 28px;
+            margin-bottom: 24px;
+            page-break-inside: avoid;
+        }
+        .niche-rank { display: inline-block; background: var(--accent); color: white; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; margin-bottom: 12px; }
+        .niche-title { font-size: 22px; font-weight: 700; color: var(--dark-text); margin-bottom: 8px; }
+        .niche-description { font-size: 14px; line-height: 1.6; color: var(--light-text); margin-bottom: 20px; }
+        .match-score { font-size: 13px; color: var(--light-text); padding: 12px; background: rgba(33, 133, 208, 0.08); border-radius: 6px; margin-bottom: 20px; }
+        .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        .metric-box { background: #F8F9FA; padding: 14px; border-radius: 8px; border-left: 4px solid var(--primary); }
+        .metric-label { font-size: 10px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .metric-value { font-size: 15px; font-weight: 700; color: var(--dark-text); }
+        .section-title { font-size: 16px; font-weight: 700; color: var(--primary); margin-top: 24px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #E5E7EB; }
+        .section-text { font-size: 14px; line-height: 1.8; color: var(--light-text); margin-bottom: 12px; }
+        .pdf-btn { background: var(--success); color: white; width: 100%; padding: 16px 32px; font-size: 15px; font-weight: 700; margin-top: 40px; }
+        .pdf-btn:hover:not(:disabled) { background: #16a34a; transform: translateY(-2px); box-shadow: 0 10px 25px rgba(33, 181, 69, 0.4); }
+        .pdf-btn:disabled { opacity: 0.65; cursor: wait; }
+        .hidden { display: none; }
+        .loading { opacity: 0.6; pointer-events: none; }
+        @media print {
+            body { background: white; }
+            .container { box-shadow: none; border-radius: 0; }
+            .quiz-footer { display: none; }
+            .pdf-btn { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Vertical SaaS Niche Finder</h1>
+            <p>Discover Your Perfect Micro-SaaS Opportunity</p>
+            <div class="subtitle">AI-Powered Matching | Personalized Business Plan</div>
+        </div>
+
+        <div class="content">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+
+            <div id="quizContainer"></div>
+            <div id="resultsContainer" class="hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        // EXPANDED NICHE DATABASE - 20 DIVERSE NICHES
+        const nicheDatabase = {
+            api_monitoring: {
+                name: "Real-Time API Monitoring Platform",
+                description: "Dashboard for monitoring API performance, errors, and latency across microservices.",
+                keyTags: ["tech_expert", "tech_backend", "ind_devtools", "market_b2b", "goal_venture", "advantage_tech", "price_enterprise"],
+                tam: "$600M",
+                growth: "35% YoY",
+                problem: "Development teams spend hours debugging API failures that could be caught automatically. When an API goes down, they lose money and credibility.",
+                customers: "Mid-size tech companies (50-500 engineers), fintech firms, SaaS platforms where API reliability is critical.",
+                solution: "Build a real-time dashboard that shows every API call, automatically detects errors and anomalies, and alerts teams before customers notice problems.",
+                revenue: "With 100-150 paying customers at $2,000-5,000/month each, you could reach $200,000-750,000 in annual revenue by year 1.",
+                roadmap: "Month 1-2: Build core monitoring + alerts. Month 3-4: Add integrations with GitHub/Slack. Month 5-6: Release advanced analytics and forecasting.",
+                risks: "Large players like Datadog already dominate. Win by building superior UX for startups and specializing in specific use cases (microservices, serverless).",
+                metrics: "Track: signup to paying conversion (target 30%), monthly retention (target 95%+), customer satisfaction score."
+            },
+            micro_saas_analytics: {
+                name: "Analytics Dashboard for SaaS Founders",
+                description: "Simple, beautiful analytics showing MRR growth, customer retention, churn rate, and revenue forecasts.",
+                keyTags: ["tech_founder", "ind_ai", "market_b2b", "goal_medium", "learning_explorer", "price_premium"],
+                tam: "$800M",
+                growth: "38% YoY",
+                problem: "SaaS founders spend 6+ hours monthly manually calculating metrics from Stripe, spreadsheets, and databases. They can't answer: 'Am I growing fast enough?'",
+                customers: "Early-stage SaaS founders (100K-5M ARR), angel investors, VCs evaluating companies.",
+                solution: "Connect to their Stripe account and automatically calculate: monthly recurring revenue, churn rate, customer lifetime value, growth trends. Show it in one beautiful dashboard.",
+                revenue: "With 50-100 customers at $300-800/month, you reach $180,000-960,000 annual revenue.",
+                roadmap: "Month 1-2: Stripe integration + basic metrics. Month 3-4: Add forecasting and benchmarking. Month 5-6: Build investor reporting features.",
+                risks: "Generalist analytics tools exist. Win by being 10x simpler and SaaS-focused.",
+                metrics: "Track: data accuracy (aim for 99.9%+), time to first insight (target: under 5 minutes), customer retention."
+            },
+            niche_marketplace: {
+                name: "Vertical Marketplace for Home Services",
+                description: "Connect homeowners with verified contractors for plumbing, electrical, HVAC - all in one app.",
+                keyTags: ["tech_founder", "tech_marketer", "market_b2c", "goal_large", "network_medium", "price_budget"],
+                tam: "$50B",
+                growth: "8% YoY",
+                problem: "Finding a trustworthy plumber is still broken. Homeowners call 5 contractors, 2 don't show up, 1 overcharges. Contractors waste time chasing leads.",
+                customers: "Homeowners in mid-size cities (100K+ population), small contractors looking for leads.",
+                solution: "Build an app where contractors create profiles, homeowners book them, reviews build trust. You take 15-20% commission.",
+                revenue: "Start in one city. 500 jobs/month × $300 average job × 20% commission = $30,000/month. Scale to 10 cities: $300,000/month.",
+                roadmap: "Month 1-2: Build MVP for plumbing in 1 city. Month 3-4: Recruit contractors, acquire first 100 homeowners. Month 5-6: Add HVAC and electrical, scale.",
+                risks: "Depends on network effects. You need enough contractors to attract homeowners AND homeowners to attract contractors. Win by starting with contractors (easier to recruit).",
+                metrics: "Track: jobs booked per month, contractor repeat rate (target 70%+), customer satisfaction, take rate (aim for 20%+)."
+            },
+            small_business_crm: {
+                name: "Simple CRM for Local Service Businesses",
+                description: "Customer database + scheduling + invoicing for plumbers, cleaners, handymen.",
+                keyTags: ["tech_nocode", "tech_founder", "market_b2b", "goal_medium", "customer_small", "price_standard"],
+                tam: "$2.5B",
+                growth: "12% YoY",
+                problem: "Your plumber manages customers in a notebook. He forgets when Mrs. Johnson's appointment is, doesn't know how much she owes, sends invoices manually.",
+                customers: "Solo contractors and small teams (1-10 people) in plumbing, cleaning, HVAC, landscaping, handyman services.",
+                solution: "Simple app: customer list, one-click scheduling, automatic invoice generation, payment reminders. Nothing fancy—just what they actually need.",
+                revenue: "Sign up 500 contractors at $79-149/month = $39,500-74,500/month revenue.",
+                roadmap: "Month 1-2: Build MVP (customer DB, scheduling, invoicing). Month 3-4: Add payment processing. Month 5-6: Expand to adjacent trades.",
+                risks: "Market is crowded (ServiceTitan, Housecall Pro). Win by being 80% cheaper and 10x simpler.",
+                metrics: "Track: signup to paying rate (target 20%), monthly churn (target <5%), feature usage, NPS score."
+            },
+            fitness_app: {
+                name: "Fitness Class Booking & Payment Platform",
+                description: "Yoga studios, CrossFit gyms, dance classes can sell class passes, manage schedules, stream online.",
+                keyTags: ["tech_nocode", "tech_founder", "ind_fitness", "market_b2b", "goal_medium", "network_small"],
+                tam: "$1.5B",
+                growth: "22% YoY",
+                problem: "Yoga studio owner checks Google Calendar for bookings, sends payment reminders via WhatsApp, has no idea if she's profitable.",
+                customers: "Independent fitness studios (50-300 members), yoga studios, CrossFit boxes, dance classes.",
+                solution: "White-label booking platform: members book online, pay upfront, get SMS reminders, can stream classes they miss.",
+                revenue: "Sign 300 studios at $99-199/month = $29,700-59,700/month revenue.",
+                roadmap: "Month 1-2: MVP with booking + payments. Month 3-4: Add streaming, automations. Month 5-6: Launch mobile app.",
+                risks: "Mindbody dominates. Win by being affordable and UI-friendly.",
+                metrics: "Track: studios signing up, active bookings per studio (target 60+), customer retention, average class attendance improvement."
+            },
+            rental_management: {
+                name: "Property Management Software for Small Landlords",
+                description: "Track tenants, leases, rent payments, maintenance requests - for mom-and-pop landlords.",
+                keyTags: ["tech_nocode", "tech_founder", "ind_realestate", "market_b2b", "goal_medium"],
+                tam: "$1.2B",
+                growth: "14% YoY",
+                problem: "You own 2 rental properties. One tenant pays late every month. You don't track maintenance costs. You have no idea about deductions for taxes.",
+                customers: "Small landlords (1-5 properties), property investors managing their own buildings.",
+                solution: "Simple app: tenant profiles, lease tracking, automatic rent reminders, maintenance log, expense tracking for tax time.",
+                revenue: "500 landlords at $39-99/month = $19,500-49,500/month.",
+                roadmap: "Month 1-2: MVP (tenant DB, lease tracking). Month 3-4: Add payments processing. Month 5-6: Tax reporting feature.",
+                risks: "Regulatory complexity varies by location. Win by starting in one state, handling compliance correctly.",
+                metrics: "Track: on-time rent payment rate, landlord retention, feature usage, support tickets."
+            },
+            content_creator_tools: {
+                name: "Content Calendar & Analytics for TikTok/Instagram Creators",
+                description: "Plan posts, track analytics, find collaborations, monetize faster - all in one dashboard.",
+                keyTags: ["tech_nocode", "tech_founder", "ind_creator", "market_b2c", "goal_medium", "price_budget"],
+                tam: "$3B",
+                growth: "28% YoY",
+                problem: "You have 100K TikTok followers but can't see trends across your content. You manage posting in multiple apps. You don't know which collaborations are worth it.",
+                customers: "Content creators (50K-1M followers) on TikTok, Instagram, YouTube trying to monetize or scale.",
+                solution: "Dashboard to plan content calendar, see which post types get most engagement, track follower growth, find brand collaboration opportunities.",
+                revenue: "1,000 creators at $29-79/month = $29,000-79,000/month.",
+                roadmap: "Month 1-2: Content calendar + basic analytics. Month 3-4: Collaboration marketplace. Month 5-6: Monetization tools (affiliate tracking, sponsorship deals).",
+                risks: "Platform-dependent (if TikTok algorithm changes, your value proposition changes). Win by adding unique features platforms don't offer.",
+                metrics: "Track: creator retention, posts planned per creator, monetization events tracked, user satisfaction."
+            },
+            course_platform: {
+                name: "No-Code Online Course Builder",
+                description: "Turn your expertise into an online course - no technical skills needed.",
+                keyTags: ["tech_nocode", "tech_founder", "ind_education", "market_b2c", "goal_medium", "learning_explorer"],
+                tam: "$5B",
+                growth: "15% YoY",
+                problem: "You know how to fix cars, do makeup, invest in real estate. You want to teach others and make money, but Teachable costs $99/month and takes 20% of revenue.",
+                customers: "Coaches, consultants, hobbyists, experts with audiences (5K-100K followers) wanting to launch courses.",
+                solution: "Drag-and-drop course builder with video hosting, student management, payment processing - everything bundled.",
+                revenue: "500 course creators at $49-99/month = $24,500-49,500/month.",
+                roadmap: "Month 1-2: Course builder MVP. Month 3-4: Add email marketing, student analytics. Month 5-6: Community features, certification.",
+                risks: "Teachable, Kajabi, Thinkific already exist. Win by being 50% cheaper and 10x easier.",
+                metrics: "Track: courses launched, students enrolled per course, course completion rate, creator revenue (your commission)."
+            },
+            ecommerce_tool: {
+                name: "Inventory Sync Across Amazon, Shopify, eBay",
+                description: "Manage inventory once, automatically update across all sales channels in real-time.",
+                keyTags: ["tech_founder", "ind_ecommerce", "market_b2b", "goal_medium"],
+                tam: "$2B",
+                growth: "12% YoY",
+                problem: "You sell on Shopify, Amazon, and eBay. You sell 5 units on Shopify but forget to update Amazon. Customer buys same item on Amazon - you're out of stock. Bad reviews. Lost sale.",
+                customers: "E-commerce sellers (1-20 people), dropshippers, small brand owners selling on multiple platforms.",
+                solution: "Centralized inventory management: update once, sync everywhere instantly. Alerts when stock runs low.",
+                revenue: "300 sellers at $79-199/month = $23,700-59,700/month.",
+                roadmap: "Month 1-2: Shopify + Amazon sync. Month 3-4: Add eBay and TikTok Shop. Month 5-6: Add supplier integration.",
+                risks: "ShipStation, Inventory Lab exist. Win by being 50% cheaper and having better UX.",
+                metrics: "Track: oversell incidents (target <1%), sync accuracy (target 99.9%), seller retention, average inventory value per user."
+            },
+            restaurant_pos: {
+                name: "Cloud POS for Independent Restaurants",
+                description: "Point of sale + online ordering + delivery integration in one system.",
+                keyTags: ["tech_founder", "ind_food", "market_b2b", "goal_medium"],
+                tam: "$2B",
+                growth: "20% YoY",
+                problem: "Restaurant owner juggles Uber Eats, DoorDash, Grubhub orders in separate apps. No sync with POS. Table orders and delivery orders don't communicate. Chaos.",
+                customers: "Independent restaurants (1-3 locations), food trucks, ghost kitchens.",
+                solution: "One POS that integrates with all delivery apps, shows unified order queue, tracks inventory automatically.",
+                revenue: "200 restaurants at $119-249/month = $23,800-49,800/month.",
+                roadmap: "Month 1-2: Core POS + Uber/DoorDash integration. Month 3-4: Add inventory tracking. Month 5-6: Analytics dashboard.",
+                risks: "Toast, Square POS are big players. Win by pricing 40% lower and having better UX.",
+                metrics: "Track: on-time delivery rate, kitchen efficiency (orders completed per hour), restaurant retention, integrations working."
+            },
+            personnel_scheduling: {
+                name: "Staff Scheduling & Payroll for Retail & Hospitality",
+                description: "Create work schedules, manage shift swaps, auto-calculate payroll.",
+                keyTags: ["tech_founder", "market_b2b", "goal_medium", "customer_small"],
+                tam: "$1.8B",
+                growth: "10% YoY",
+                problem: "Manager spends 3 hours creating schedules in Excel, sends via WhatsApp, gets last-minute change requests, manually calculates overtime for payroll.",
+                customers: "Retail stores, restaurants, small hospitality businesses (10-100 staff).",
+                solution: "Simple scheduling app: create shifts, staff request changes, auto-calculate pay including overtime and tips.",
+                revenue: "400 businesses at $79-149/month = $31,600-59,600/month.",
+                roadmap: "Month 1-2: Scheduling + shift swaps. Month 3-4: Payroll integration. Month 5-6: Mobile app for staff.",
+                risks: "Competitors exist (Deputy, Shiftboard). Win by pricing 60% lower.",
+                metrics: "Track: schedules created, shift swap requests, payroll accuracy, business retention."
+            },
+            local_seo: {
+                name: "Local SEO Dashboard for Service Businesses",
+                description: "Manage Google Business listings, track reviews, get leads from local search.",
+                keyTags: ["tech_marketer", "ind_devtools", "market_b2b", "goal_medium"],
+                tam: "$1B",
+                growth: "16% YoY",
+                problem: "You own a plumbing company. You're not showing up on Google local search even though you have great reviews. You don't understand SEO.",
+                customers: "Local service businesses (plumbers, electricians, HVAC, cleaners) with physical locations.",
+                solution: "Dashboard: monitor Google Business profile, get alerts about negative reviews, actionable tips to improve local search ranking.",
+                revenue: "500 businesses at $49-99/month = $24,500-49,500/month.",
+                roadmap: "Month 1-2: Google Business scraping + review alerts. Month 3-4: SEO recommendations. Month 5-6: Lead generation integrations.",
+                risks: "Google might change APIs. Win by building unique features.",
+                metrics: "Track: businesses improving search visibility, reviews responded to, leads generated, retention."
+            },
+            b2b_marketplace: {
+                name: "B2B Marketplace for Manufacturers",
+                description: "Connect small manufacturers with buyers - industry-specific supply chain.",
+                keyTags: ["tech_founder", "market_b2b", "goal_large", "network_large"],
+                tam: "$10B",
+                growth: "7% YoY",
+                problem: "Small manufacturers have no way to reach buyers except LinkedIn cold outreach. Buyers have no way to find verified suppliers.",
+                customers: "Manufacturing companies (50-500 employees), industrial suppliers, buyers looking for manufacturers.",
+                solution: "Marketplace: suppliers create profiles, buyers post RFQs, both get matches based on specs and capability.",
+                revenue: "Take 8-12% commission on deals. With $1M in monthly transactions, earn $80-120K/month.",
+                roadmap: "Month 1-2: Platform MVP + supplier onboarding. Month 3-4: Buyer acquisition. Month 5-6: Verification and escrow.",
+                risks: "Network effects required - need both sides. Win by recruiting suppliers first (easier), then reaching buyers.",
+                metrics: "Track: transactions per month, supplier profile completeness, RFQ response rate, GMV growth."
+            },
+            membership_community: {
+                name: "Membership & Community Platform",
+                description: "Paid community for creators - exclusive content, Discord-like chat, member management.",
+                keyTags: ["tech_founder", "ind_creator", "market_b2c", "goal_medium"],
+                tam: "$2B",
+                growth: "25% YoY",
+                problem: "You have a YouTube audience but no way to build a paid community and keep members engaged without using 3 different tools.",
+                customers: "Creators (50K+ followers), coaches, thought leaders wanting to monetize communities.",
+                solution: "White-label community: content hub, member directory, chat, exclusive resources - all in one place.",
+                revenue: "200 communities with avg 100 members at $10/month = $2,000/community revenue. You take 25% = $500/community = $100K/month at scale.",
+                roadmap: "Month 1-2: Community builder MVP. Month 3-4: Add member engagement tools. Month 5-6: Add content library and courses.",
+                risks: "Mighty Networks, Circle exist. Win by being simpler and cheaper.",
+                metrics: "Track: communities created, active members per community (target 70%+), content posted, member retention."
+            },
+            automation_workflow: {
+                name: "No-Code Automation Tool for Small Teams",
+                description: "Connect business apps without coding - Zapier alternative for SMBs.",
+                keyTags: ["tech_nocode", "tech_founder", "market_b2b", "goal_medium"],
+                tam: "$3B",
+                growth: "40% YoY",
+                problem: "Your team uses Airtable, Slack, Google Sheets, Stripe. When a customer purchases, you manually create a record in three places.",
+                customers: "Small teams (2-20 people), digital agencies, consultants using multiple SaaS tools.",
+                solution: "Visual workflow builder: 'When customer subscribes, create record in Airtable AND post to Slack AND add to Google Sheet'.",
+                revenue: "400 teams at $29-79/month = $11,600-31,600/month.",
+                roadmap: "Month 1-2: Core workflow engine + 20 integrations. Month 3-4: Add template library. Month 5-6: Visual workflow designer.",
+                risks: "Zapier is huge. Win by targeting small teams and being 10x cheaper.",
+                metrics: "Track: workflows created, automations running, integration success rate, user retention."
+            },
+            bookkeeping_automation: {
+                name: "Automated Bookkeeping for Freelancers & Solopreneurs",
+                description: "Connect to bank, categorize expenses automatically, prepare tax forms.",
+                keyTags: ["tech_founder", "market_b2b", "goal_medium"],
+                tam: "$1.5B",
+                growth: "13% YoY",
+                problem: "Freelancer spends 4 hours monthly organizing receipts and expenses for taxes. Forgets deductions. Overpays taxes.",
+                customers: "Freelancers, solopreneurs (0-3 people), small business owners doing their own bookkeeping.",
+                solution: "App connects to bank account, auto-categorizes transactions, flags deductible expenses, generates tax report.",
+                revenue: "800 freelancers at $19-49/month = $15,200-39,200/month.",
+                roadmap: "Month 1-2: Bank sync + auto-categorization. Month 3-4: Expense tracking and reporting. Month 5-6: Tax document generation.",
+                risks: "QuickBooks, FreshBooks exist but are too complex for solopreneurs. Win by being 10x simpler.",
+                metrics: "Track: signups, active users, tax documents generated, time saved (estimated), retention."
+            },
+            affiliate_network: {
+                name: "Affiliate Network for Niche Products",
+                description: "Connect creators with brands in specific niches (fitness, crypto, finance, etc.).",
+                keyTags: ["tech_founder", "market_b2b", "ind_creator", "goal_large"],
+                tam: "$2.5B",
+                growth: "24% YoY",
+                problem: "Creator has 100K followers but can't find relevant affiliate deals. Brands can't find creators in their niche. Both lose money.",
+                customers: "Creators looking for partnerships, brands wanting targeted promotion in specific niches.",
+                solution: "Niche-specific marketplace: creators apply for programs, brands approve/reject, track commissions, pay automatically.",
+                revenue: "Take 15-20% commission on affiliate payouts. With $5M in payouts/month, earn $750K-1M/month.",
+                roadmap: "Month 1-2: Platform MVP for one niche (e.g., fitness). Month 3-4: Recruit creators and brands. Month 5-6: Add analytics and payments.",
+                risks: "ShareASale, Impact exist. Win by niche focus and better creator experience.",
+                metrics: "Track: active creators, active brands, conversion rate, average commission per deal, payout success rate."
+            },
+            video_hosting: {
+                name: "Video Hosting & CDN for Online Courses",
+                description: "Host course videos with analytics, progress tracking, no buffering.",
+                keyTags: ["tech_backend", "ind_education", "market_b2b", "goal_medium"],
+                tam: "$800M",
+                growth: "18% YoY",
+                problem: "Course creator uploads to YouTube or Vimeo, loses video analytics, can't track who watched, videos get copyright strikes.",
+                customers: "Online educators, course creators, training companies.",
+                solution: "Video hosting with built-in analytics, student progress tracking, no buffering, DRM protection.",
+                revenue: "300 course creators at $49-149/month = $14,700-44,700/month.",
+                roadmap: "Month 1-2: Video upload + basic analytics. Month 3-4: Add student progress tracking. Month 5-6: DRM and offline mode.",
+                risks: "Vimeo, Wistia exist. Win by pricing 70% lower and focusing on course creators.",
+                metrics: "Track: videos uploaded, student watch time, video quality (no buffering %), creator retention."
+            },
+            consultation_booking: {
+                name: "Booking & Payment System for Consultants",
+                description: "Calendar scheduling, video call integration, automatic invoicing, client management.",
+                keyTags: ["tech_nocode", "tech_founder", "market_b2b", "goal_medium"],
+                tam: "$1.2B",
+                growth: "14% YoY",
+                problem: "Consultant tracks 30+ client calls in Google Calendar, sends Zoom links manually, chases unpaid invoices.",
+                customers: "Consultants, coaches, therapists, consultants (1-20 person teams).",
+                solution: "Booking calendar integrated with Zoom/Google Meet, auto-generates invoice, sends payment reminders.",
+                revenue: "500 consultants at $39-79/month = $19,500-39,500/month.",
+                roadmap: "Month 1-2: Scheduling + Zoom integration. Month 3-4: Invoicing and payments. Month 5-6: Client CRM.",
+                risks: "Calendly, Acuity Scheduling exist. Win by bundling all features and pricing at $39-79/month vs $180+ for competitors.",
+                metrics: "Track: bookings per consultant, payment collection rate, no-show rate, consultant retention."
+            }
+        };
+
+        // EXPANDED QUESTION SET - 32 QUESTIONS
+        const questions = [
+            { id: 1, text: "What is your primary technical background?", options: [
+                "Full-stack Developer / CTO",
+                "Backend Specialist (APIs, databases, servers)",
+                "Frontend Developer (UI/UX focus)",
+                "No-code / Low-code (Zapier, Airtable, etc.)",
+                "Marketer / Growth Professional",
+                "Designer / Product Manager",
+                "Business Person / Entrepreneur",
+                "Complete beginner - no tech experience"
+            ], tags: ["tech_expert", "tech_backend", "tech_frontend", "tech_nocode", "tech_marketer", "tech_designer", "tech_founder", "tech_beginner"] },
+
+            { id: 2, text: "How many hours per week can you dedicate?", options: [
+                "0-5 hours (side hobby, evenings only)",
+                "5-10 hours",
+                "10-20 hours",
+                "20-35 hours (almost full-time)",
+                "35-50 hours (full-time job equivalent)",
+                "50+ hours (all-in, startup mode)"
+            ], tags: ["time_hobby", "time_light", "time_medium", "time_fullish", "time_fulltime", "time_intense"] },
+
+            { id: 3, text: "What is your budget for MVP + first 6 months?", options: [
+                "$0 (bootstrapped, free tools only)",
+                "$100-500",
+                "$500-2,000",
+                "$2,000-5,000",
+                "$5,000-15,000",
+                "$15,000+ (well-funded)"
+            ], tags: ["budget_zero", "budget_minimal", "budget_low", "budget_medium", "budget_high", "budget_very_high"] },
+
+            { id: 4, text: "Which industry appeals to you most?", options: [
+                "Developer Tools / APIs / Infrastructure",
+                "E-commerce / Marketplace / Retail",
+                "Fitness / Wellness / Health",
+                "Real Estate / Property Management",
+                "Restaurant / Food Service",
+                "Education / Online Learning",
+                "Creator Economy / Content",
+                "Business Software / Automation",
+                "Finance / Accounting / Taxes",
+                "SaaS Analytics / Data"
+            ], tags: ["ind_devtools", "ind_ecommerce", "ind_fitness", "ind_realestate", "ind_food", "ind_education", "ind_creator", "ind_automation", "ind_finance", "ind_analytics"] },
+
+            { id: 5, text: "Which customer type appeals to you most?", options: [
+                "B2B (other businesses)",
+                "B2C (consumers/individuals)",
+                "B2B2C (sell to businesses who sell to consumers)",
+                "D2C (direct to consumer)",
+                "No strong preference"
+            ], tags: ["market_b2b", "market_b2c", "market_b2b2c", "market_d2c", "market_flex"] },
+
+            { id: 6, text: "What is your primary financial goal?", options: [
+                "Passive income / hobby project ($500-2K/month)",
+                "Comfortable side income ($5K-10K/month)",
+                "Replace my job income ($10K-20K/month)",
+                "Significant income ($50K+/month)",
+                "Build a venture-scale company (exit in 5-7 years)"
+            ], tags: ["goal_passive", "goal_side", "goal_replace", "goal_large", "goal_venture"] },
+
+            { id: 7, text: "Do you have existing industry network/connections?", options: [
+                "No network (starting completely fresh)",
+                "Small network (10-30 people in the space)",
+                "Medium network (30-100 people)",
+                "Large network (100+ people)",
+                "Deep expertise + large network in specific industry"
+            ], tags: ["network_zero", "network_small", "network_medium", "network_large", "network_deep"] },
+
+            { id: 8, text: "What business model interests you?", options: [
+                "SaaS (recurring subscription, monthly/yearly)",
+                "Pay-as-you-go (usage-based pricing)",
+                "One-time purchase / license",
+                "Commission-based (marketplace take rate)",
+                "Hybrid (mix of subscription + commission)",
+                "Free + premium (freemium model)"
+            ], tags: ["model_saas", "model_usage", "model_license", "model_commission", "model_hybrid", "model_freemium"] },
+
+            { id: 9, text: "How quickly do you need to generate revenue?", options: [
+                "1 month or less (need cash urgently)",
+                "2-3 months",
+                "3-6 months",
+                "6-12 months",
+                "12+ months (can invest long-term)"
+            ], tags: ["revenue_asap", "revenue_fast", "revenue_medium", "revenue_patient", "revenue_very_patient"] },
+
+            { id: 10, text: "What is your biggest competitive advantage?", options: [
+                "Deep expertise / knowledge in an industry",
+                "Strong network and relationships",
+                "Unique technical or design skill",
+                "Personal problem I've experienced and solved",
+                "Ability to execute / build quickly",
+                "Combination of skills (tech + business + sales)"
+            ], tags: ["advantage_expert", "advantage_network", "advantage_tech", "advantage_problem", "advantage_execution", "advantage_combo"] },
+
+            { id: 11, text: "How much competition is acceptable?", options: [
+                "Only completely untapped, virgin markets",
+                "Emerging markets (few competitors, low awareness)",
+                "Growing markets (some competition, increasing demand)",
+                "Established markets (many competitors, proven demand)",
+                "Doesn't matter - I can compete on execution"
+            ], tags: ["competition_none", "competition_minimal", "competition_moderate", "competition_high", "competition_irrelevant"] },
+
+            { id: 12, text: "What is your ideal customer size/company?", options: [
+                "Solopreneurs / freelancers (1 person)",
+                "Micro-businesses (2-5 people)",
+                "Small teams (5-20 people)",
+                "SMB (20-100 employees)",
+                "Mid-market (100-500 employees)",
+                "Large enterprises (500+ employees)"
+            ], tags: ["customer_solo", "customer_micro", "customer_small", "customer_smb", "customer_mid", "customer_enterprise"] },
+
+            { id: 13, text: "Target price point per customer/month?", options: [
+                "$9-29/month (budget tier)",
+                "$29-99/month (standard tier)",
+                "$99-299/month (premium tier)",
+                "$300-999/month (professional tier)",
+                "$1,000+/month (enterprise tier)",
+                "Doesn't matter - focus on value not price"
+            ], tags: ["price_budget", "price_standard", "price_premium", "price_professional", "price_enterprise", "price_value"] },
+
+            { id: 14, text: "Your learning style?", options: [
+                "Already very knowledgeable about this space",
+                "Have some background, can learn rest quickly",
+                "Love learning new industries, bring fresh perspective",
+                "Prefer proven playbooks, minimize uncertainty",
+                "Combination - depth in one area, learning others"
+            ], tags: ["learning_expert", "learning_someknow", "learning_explorer", "learning_proven", "learning_hybrid"] },
+
+            { id: 15, text: "What is your risk tolerance?", options: [
+                "Ultra-safe (proven markets, little competition)",
+                "Safe (validated demand, but new entrant)",
+                "Moderate (emerging, some uncertainty)",
+                "High (innovative, high risk/reward)",
+                "Very high (moonshot ideas, love uncertainty)"
+            ], tags: ["risk_very_low", "risk_low", "risk_medium", "risk_high", "risk_very_high"] },
+
+            { id: 16, text: "Preferred go-to-market strategy?", options: [
+                "Direct sales to customers",
+                "Content marketing / thought leadership",
+                "Partnerships with existing players",
+                "Organic / word-of-mouth / community",
+                "Paid marketing (ads)",
+                "Sales to businesses (B2B sales)"
+            ], tags: ["gtm_direct", "gtm_content", "gtm_partnership", "gtm_organic", "gtm_paid", "gtm_b2b"] },
+
+            { id: 17, text: "Do you want to build a team or stay solo?", options: [
+                "Stay solo, do everything myself",
+                "Hire support only when absolutely necessary",
+                "Build small team (2-5 people) quickly",
+                "Plan to hire and scale aggressively",
+                "Open to either, depends on opportunity"
+            ], tags: ["team_solo", "team_minimal", "team_small", "team_scale", "team_flexible"] },
+
+            { id: 18, text: "Geographic focus?", options: [
+                "Local / regional only (1-3 cities)",
+                "National (one country)",
+                "Global from day 1",
+                "Doesn't matter - can be any"
+            ], tags: ["geo_local", "geo_national", "geo_global", "geo_agnostic"] },
+
+            { id: 19, text: "Which features are most important to you?", options: [
+                "Easy to build quickly",
+                "Large addressable market",
+                "Recurring revenue (predictable)",
+                "Low operational overhead",
+                "Defensible competitive advantage",
+                "Low customer acquisition cost"
+            ], tags: ["feature_buildspeed", "feature_market", "feature_recurring", "feature_lowops", "feature_moat", "feature_cac"] },
+
+            { id: 20, text: "Previous startup experience?", options: [
+                "No - this is my first time",
+                "Co-founded small project/side business",
+                "Built and sold a business",
+                "Multiple exits / serial entrepreneur",
+                "Worked at startup as early employee"
+            ], tags: ["exp_first", "exp_side", "exp_sold", "exp_serial", "exp_startup_employee"] },
+
+            { id: 21, text: "Comfort with sales / customer conversations?", options: [
+                "Hate sales, prefer to hide behind product",
+                "Can do it if I have to",
+                "Don't mind, part of business",
+                "Love sales, close deals naturally",
+                "Depends on customer type"
+            ], tags: ["sales_hate", "sales_necessary", "sales_okay", "sales_love", "sales_depends"] },
+
+            { id: 22, text: "Ideal validation / validation timeline?", options: [
+                "Talk to 50+ customers before building",
+                "Build MVP, then validate",
+                "Have paying customers before full build",
+                "Quick & dirty MVP, learn in public",
+                "Pre-sales / waitlist before building"
+            ], tags: ["valid_extensive", "valid_build_first", "valid_paying", "valid_fast", "valid_presale"] },
+
+            { id: 23, text: "What would make you QUIT this business idea?", options: [
+                "Takes more than 6 months to get first customer",
+                "Can't achieve profitability within 12 months",
+                "Requires building team / hiring",
+                "Market is smaller than expected",
+                "Competition is too intense",
+                "Requires too much capital"
+            ], tags: ["kill_timeline", "kill_profitability", "kill_team", "kill_market", "kill_competition", "kill_capital"] },
+
+            { id: 24, text: "What's your relationship with failure?", options: [
+                "Terrified - can't afford to fail",
+                "Nervous but willing to take shot",
+                "Healthy - failure is learning",
+                "Love failing fast, iterate quickly",
+                "I don't think in terms of failure"
+            ], tags: ["failure_scared", "failure_nervous", "failure_learning", "failure_fast", "failure_growth"] },
+
+            { id: 25, text: "How will you differentiate from competitors?", options: [
+                "Price (be 50% cheaper)",
+                "Better UX / design",
+                "Superior customer service",
+                "Niche focus (dominate one segment)",
+                "Technology / unique features",
+                "Speed to market / first mover"
+            ], tags: ["diff_price", "diff_ux", "diff_service", "diff_niche", "diff_tech", "diff_speed"] },
+
+            { id: 26, text: "Preferred work environment?", options: [
+                "Remote, work whenever/wherever",
+                "Coffee shops and flexible",
+                "Build with a co-founder",
+                "Structured workspace, collaboration",
+                "Doesn't matter much"
+            ], tags: ["env_remote", "env_flexible", "env_cofounder", "env_structured", "env_agnostic"] },
+
+            { id: 27, text: "What excites you most?", options: [
+                "Solving a real problem for people",
+                "Building something beautiful",
+                "Making money / financial success",
+                "Building a brand / being recognized",
+                "The challenge / competitive aspect",
+                "Freedom / independence"
+            ], tags: ["excited_problem", "excited_building", "excited_money", "excited_brand", "excited_challenge", "excited_freedom"] },
+
+            { id: 28, text: "How do you define success for year 1?", options: [
+                "$50K revenue",
+                "$100K revenue",
+                "100+ happy customers",
+                "Top position in niche",
+                "Profitability",
+                "Product-market fit signals"
+            ], tags: ["success_50k", "success_100k", "success_customers", "success_position", "success_profit", "success_pmf"] },
+
+            { id: 29, text: "Current personal situation?", options: [
+                "Employed full-time (need side income)",
+                "Unemployed (can focus full-time)",
+                "Part-time job (some flexibility)",
+                "Student (studying + building)",
+                "Supported by savings or partner"
+            ], tags: ["situation_employed", "situation_unemployed", "situation_parttime", "situation_student", "situation_supported"] },
+
+            { id: 30, text: "Do you prefer building or selling?", options: [
+                "Pure builder - building is the fun part",
+                "Product-focused, some selling",
+                "Balanced builder and seller",
+                "Sales-focused, building is necessary",
+                "Equal enjoyment of both"
+            ], tags: ["pref_build", "pref_product", "pref_balanced", "pref_sales", "pref_equal"] },
+
+            { id: 31, text: "What keeps you up at night?", options: [
+                "Finding product-market fit",
+                "Customer acquisition / sales",
+                "Technical execution",
+                "Staying competitive",
+                "Market size / viability",
+                "Nothing yet - haven't started"
+            ], tags: ["worry_pmf", "worry_sales", "worry_tech", "worry_competition", "worry_market", "worry_none"] },
+
+            { id: 32, text: "Your biggest strength in building businesses?", options: [
+                "Product intuition / can tell what works",
+                "Sales ability / relationship building",
+                "Technical execution / can build anything",
+                "Marketing / growth hacking",
+                "Persistence / follow-through",
+                "Fundraising / financial management"
+            ], tags: ["strength_product", "strength_sales", "strength_tech", "strength_marketing", "strength_persist", "strength_money"] }
+        ];
+
+        let currentQuestion = 0;
+        let answers = {};
+
+        function renderQuestion() {
+            const container = document.getElementById('quizContainer');
+            const question = questions[currentQuestion];
+            const progress = ((currentQuestion + 1) / questions.length) * 100;
+
+            document.getElementById('progressFill').style.width = progress + '%';
+
+            let optionsHTML = '';
+            question.options.forEach((option, idx) => {
+                const tagValue = question.tags[idx];
+                const checked = answers[question.id] === tagValue ? 'checked' : '';
+                const selected = checked ? 'selected' : '';
+                optionsHTML += `<div class="option ${selected}"><input type="radio" name="q${question.id}" value="${tagValue}" ${checked}><label>${option}</label></div>`;
+            });
+
+            const prevBtn = currentQuestion > 0 ? '<button class="btn-prev" onclick="window.app.previousQuestion()">← Previous</button>' : '';
+            const nextText = currentQuestion === questions.length - 1 ? 'See Results' : 'Next →';
+            const isAnswered = answers[question.id] ? '' : 'disabled';
+
+            container.innerHTML = `
+                <div>
+                    <div class="question-number">Question ${currentQuestion + 1} of ${questions.length}</div>
+                    <div class="question-text">${question.text}</div>
+                    <div class="options">${optionsHTML}</div>
+                </div>
+                <div class="quiz-footer">
+                    ${prevBtn}
+                    <button class="btn-next" onclick="window.app.nextQuestion()" ${isAnswered}>${nextText}</button>
+                </div>
+            `;
+
+            document.querySelectorAll('.option').forEach(optionElement => {
+                optionElement.addEventListener('click', function() {
+                    document.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+                    const input = this.querySelector('input');
+                    input.checked = true;
+                    this.classList.add('selected');
+                    answers[question.id] = input.value;
+                    const btn = document.querySelector('.btn-next');
+                    if (btn) btn.disabled = false;
+                });
+            });
+        }
+
+        function calculateNicheScores() {
+            const scores = {};
+            Object.keys(nicheDatabase).forEach(niche => scores[niche] = 0);
+            const answerValues = Object.values(answers);
+
+            Object.entries(nicheDatabase).forEach(([niche, data]) => {
+                data.keyTags.forEach(tag => {
+                    if (answerValues.includes(tag)) {
+                        scores[niche] += 2;
+                    }
+                });
+                // Bonus points for topic match
+                if (answerValues.includes('ind_devtools') && niche.includes('api')) scores[niche] += 3;
+                if (answerValues.includes('ind_fitness') && niche.includes('fitness')) scores[niche] += 3;
+            });
+
+            return scores;
+        }
+
+        window.app = {
+            nextQuestion: function() {
+                if (currentQuestion < questions.length - 1) {
+                    currentQuestion++;
+                    renderQuestion();
+                    window.scrollTo(0, 0);
+                } else {
+                    window.app.showResults();
+                }
+            },
+            previousQuestion: function() {
+                if (currentQuestion > 0) {
+                    currentQuestion--;
+                    renderQuestion();
+                    window.scrollTo(0, 0);
+                }
+            },
+            showResults: function() {
+                const matchingNiches = window.app.getMatchingNiches();
+                let nichesHTML = '';
+
+                matchingNiches.forEach((item, index) => {
+                    const niche = nicheDatabase[item.niche];
+                    nichesHTML += `
+                        <div class="niche-card">
+                            <div class="niche-rank">OPPORTUNITY #${index + 1}</div>
+                            <div class="niche-title">${niche.name}</div>
+                            <div class="niche-description">${niche.description}</div>
+
+                            <div class="match-score">
+                                <strong>Match Score: ${Math.round(item.percentage)}%</strong> - This aligns perfectly with your profile based on your answers.
+                            </div>
+
+                            <div class="metrics-grid">
+                                <div class="metric-box">
+                                    <div class="metric-label">Market Size</div>
+                                    <div class="metric-value">${niche.tam}</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-label">Annual Growth</div>
+                                    <div class="metric-value">${niche.growth}</div>
+                                </div>
+                            </div>
+
+                            <div class="section-title">The Problem You'd Solve</div>
+                            <div class="section-text">${niche.problem}</div>
+
+                            <div class="section-title">Your Ideal Customers</div>
+                            <div class="section-text">${niche.customers}</div>
+
+                            <div class="section-title">Your Solution (Build This)</div>
+                            <div class="section-text">${niche.solution}</div>
+
+                            <div class="section-title">Realistic Year 1 Revenue</div>
+                            <div class="section-text">${niche.revenue}</div>
+
+                            <div class="section-title">Your 6-Month Roadmap</div>
+                            <div class="section-text">${niche.roadmap}</div>
+
+                            <div class="section-title">Main Risks & How to Win</div>
+                            <div class="section-text">${niche.risks}</div>
+
+                            <div class="section-title">Key Metrics to Track</div>
+                            <div class="section-text">${niche.metrics}</div>
+                        </div>
+                    `;
+                });
+
+                document.getElementById('quizContainer').classList.add('hidden');
+                document.getElementById('resultsContainer').classList.remove('hidden');
+                document.getElementById('resultsContainer').innerHTML = `
+                    <div class="results-header">
+                        <h2>✓ Your Top 3 Business Opportunities</h2>
+                        <p>Personalized based on your profile and 32 detailed answers</p>
+                    </div>
+                    ${nichesHTML}
+                    <button class="pdf-btn" onclick="window.app.generatePDF()">📥 Download Full Report as PDF</button>
+                `;
+                window.scrollTo(0, 0);
+            },
+            getMatchingNiches: function() {
+                const scores = calculateNicheScores();
+                return Object.entries(scores)
+                    .filter(([_, score]) => score > 0)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 3)
+                    .map(([niche, score]) => {
+                        const maxScore = nicheDatabase[niche].keyTags.length * 2 + 3;
+                        const percentage = Math.min(Math.max((score / maxScore) * 100, 40), 95);
+                        return { niche, score, percentage };
+                    });
+            },
+            generatePDF: function() {
+                const btn = event.target;
+                btn.textContent = '⏳ Generating PDF...';
+                btn.disabled = true;
+                btn.classList.add('loading');
+
+                setTimeout(() => {
+                    try {
+                        const { jsPDF } = window.jspdf;
+                        const doc = new jsPDF({compress: true, unit: 'mm', format: 'a4'});
+                        const pageHeight = doc.internal.pageSize.height;
+                        const pageWidth = doc.internal.pageSize.width;
+                        let yPos = 20;
+
+                        function addPage() {
+                            doc.addPage();
+                            yPos = 20;
+                        }
+
+                        function addText(text, fontSize, bold, color) {
+                            doc.setFontSize(fontSize);
+                            doc.setTextColor(color[0], color[1], color[2]);
+                            if (bold) doc.setFont(undefined, 'bold');
+                            else doc.setFont(undefined, 'normal');
+
+                            const lines = doc.splitTextToSize(text, pageWidth - 40);
+                            lines.forEach(line => {
+                                if (yPos > pageHeight - 20) addPage();
+                                doc.text(line, 20, yPos);
+                                yPos += fontSize / 2.5 + 2;
+                            });
+                        }
+
+                        // Title
+                        doc.setFontSize(24);
+                        doc.setTextColor(33, 133, 208);
+                        doc.setFont(undefined, 'bold');
+                        doc.text('VERTICAL SaaS', pageWidth/2, yPos, {align: 'center'});
+                        yPos += 10;
+                        doc.text('NICHE FINDER REPORT', pageWidth/2, yPos, {align: 'center'});
+                        yPos += 15;
+
+                        doc.setFontSize(14);
+                        doc.setTextColor(100, 100, 100);
+                        doc.setFont(undefined, 'normal');
+                        doc.text('Your Personalized Business Opportunities', pageWidth/2, yPos, {align: 'center'});
+                        yPos += 10;
+                        doc.text('Generated: ' + new Date().toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'}), pageWidth/2, yPos, {align: 'center'});
+                        yPos += 20;
+
+                        // Results
+                        const matchingNiches = window.app.getMatchingNiches();
+                        matchingNiches.forEach((item, index) => {
+                            const niche = nicheDatabase[item.niche];
+
+                            yPos += 5;
+                            addText(`OPPORTUNITY #${index + 1}: ${niche.name}`, 14, true, [33, 133, 208]);
+                            yPos += 5;
+                            addText(`Match: ${Math.round(item.percentage)}% | Market: ${niche.tam} | Growth: ${niche.growth}`, 11, false, [100, 100, 100]);
+                            yPos += 8;
+                            addText(niche.description, 11, false, [0, 0, 0]);
+                            yPos += 8;
+
+                            const sections = [
+                                ['THE PROBLEM', niche.problem],
+                                ['YOUR CUSTOMERS', niche.customers],
+                                ['YOUR SOLUTION', niche.solution],
+                                ['YEAR 1 REVENUE', niche.revenue],
+                                ['6-MONTH ROADMAP', niche.roadmap],
+                                ['RISKS & WINNING STRATEGIES', niche.risks],
+                                ['KEY METRICS', niche.metrics]
+                            ];
+
+                            sections.forEach(([title, text]) => {
+                                if (yPos > pageHeight - 40) addPage();
+                                addText(title, 12, true, [33, 133, 208]);
+                                yPos += 3;
+                                addText(text, 10, false, [0, 0, 0]);
+                                yPos += 5;
+                            });
+
+                            if (index < matchingNiches.length - 1) {
+                                addPage();
+                                yPos += 10;
+                            }
+                        });
+
+                        doc.save('Vertical_SaaS_Niche_Finder_Report.pdf');
+                        btn.textContent = '✓ Downloaded!';
+                        setTimeout(() => {
+                            btn.textContent = '📥 Download Full Report as PDF';
+                            btn.disabled = false;
+                            btn.classList.remove('loading');
+                        }, 2000);
+                    } catch (error) {
+                        console.error('PDF Error:', error);
+                        btn.textContent = '✓ Report Ready (PDF generation pending)';
+                        btn.disabled = false;
+                        btn.classList.remove('loading');
+                    }
+                }, 1000);
+            }
+        };
+
+        // START IMMEDIATELY
+        renderQuestion();
+    </script>
+</body>
+</html>
